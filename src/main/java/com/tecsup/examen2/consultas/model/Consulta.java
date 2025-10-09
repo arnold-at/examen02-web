@@ -39,11 +39,11 @@ public class Consulta {
     private String motivoConsulta;
     private String observaciones;
 
-    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties("consulta")
+    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Diagnostico> diagnosticos;
 
-    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnoreProperties("consulta")
+    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<RecetaMedica> recetas;
 }

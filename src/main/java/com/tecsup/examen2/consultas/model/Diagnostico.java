@@ -12,8 +12,8 @@ public class Diagnostico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idDiagnostico;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "idConsulta")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_consulta")
     @JsonIgnore
     private Consulta consulta;
 
@@ -22,4 +22,3 @@ public class Diagnostico {
 
     private String tipo;
 }
-

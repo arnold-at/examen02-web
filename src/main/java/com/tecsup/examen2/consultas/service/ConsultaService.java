@@ -1,7 +1,7 @@
 package com.tecsup.examen2.consultas.service;
 
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import com.tecsup.examen2.consultas.repository.ConsultaRepository;
 import com.tecsup.examen2.consultas.model.Consulta;
 import com.tecsup.examen2.Pacientes.repository.PacienteRepository;
@@ -28,12 +28,28 @@ public class ConsultaService {
         this.citaRepo = citaRepo;
     }
 
+    @Transactional(readOnly = true)
     public List<Consulta> findAll() {
         return repo.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Optional<Consulta> findById(Long id) {
-        return repo.findById(id);
+        Optional<Consulta> consulta = repo.findById(id);
+        consulta.ifPresent(c -> {
+            if (c.getDiagnosticos() != null) {
+                c.getDiagnosticos().size();
+            }
+            if (c.getRecetas() != null) {
+                c.getRecetas().size();
+                c.getRecetas().forEach(r -> {
+                    if (r.getDetalles() != null) {
+                        r.getDetalles().size();
+                    }
+                });
+            }
+        });
+        return consulta;
     }
 
     public Consulta create(Consulta c) {
