@@ -8,6 +8,6 @@ import java.util.List;
 
 public interface DiagnosticoRepository extends JpaRepository<Diagnostico, Long> {
 
-    @Query("SELECT d FROM Diagnostico d WHERE d.consulta.idConsulta = :idConsulta")
+    @Query("SELECT d FROM Diagnostico d JOIN FETCH d.consulta c WHERE c.idConsulta = :idConsulta")
     List<Diagnostico> findByConsulta_IdConsulta(@Param("idConsulta") Long idConsulta);
 }
