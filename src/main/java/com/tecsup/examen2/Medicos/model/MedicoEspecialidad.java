@@ -1,45 +1,25 @@
 package com.tecsup.examen2.Medicos.model;
 
+import com.fasterxml.jackson.annotation.*;
 import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "medico_especialidad")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MedicoEspecialidad {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idMedicoEsp;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_medico")
+    @JsonIgnore
     private Medico medico;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_especialidad")
+    @JsonIgnoreProperties({"medicos", "hibernateLazyInitializer", "handler"})
     private Especialidad especialidad;
-
-    public Long getIdMedicoEsp() {
-        return idMedicoEsp;
-    }
-
-    public void setIdMedicoEsp(Long idMedicoEsp) {
-        this.idMedicoEsp = idMedicoEsp;
-    }
-
-    public Medico getMedico() {
-        return medico;
-    }
-
-    public void setMedico(Medico medico) {
-        this.medico = medico;
-    }
-
-    public Especialidad getEspecialidad() {
-        return especialidad;
-    }
-
-    public void setEspecialidad(Especialidad especialidad) {
-        this.especialidad = especialidad;
-    }
 }
-

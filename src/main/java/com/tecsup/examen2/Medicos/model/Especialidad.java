@@ -1,5 +1,6 @@
 package com.tecsup.examen2.Medicos.model;
 
+import com.fasterxml.jackson.annotation.*;
 import lombok.*;
 import jakarta.persistence.*;
 import java.util.*;
@@ -16,7 +17,7 @@ public class Especialidad {
     private String descripcion;
 
     @OneToMany(mappedBy = "especialidad", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private List<MedicoEspecialidad> medicos = new ArrayList<>();
-
 }
 
