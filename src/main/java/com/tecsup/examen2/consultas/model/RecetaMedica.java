@@ -1,27 +1,27 @@
 package com.tecsup.examen2.consultas.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import com.fasterxml.jackson.annotation.*;
 import java.util.List;
+import java.util.ArrayList;
 
-@Entity
-@Table(name = "receta_medica")
+@Document(collection = "recetas_medicas")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RecetaMedica {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idReceta;
+    private String idReceta;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_consulta", nullable = false)
+    @DBRef
     @JsonIgnore
     private Consulta consulta;
 
     private String indicaciones;
 
-    @OneToMany(mappedBy = "recetaMedica", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
     @JsonIgnoreProperties("recetaMedica")
-    private List<DetalleReceta> detalles;
+    private List<DetalleReceta> detalles = new ArrayList<>();
 }

@@ -11,6 +11,7 @@ import java.util.List;
 @RequestMapping("/api/pacientes")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class PacienteController {
+
     private final PacienteService service;
 
     public PacienteController(PacienteService service) {
@@ -23,26 +24,35 @@ public class PacienteController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Paciente> get(@PathVariable Long id) {
+    public ResponseEntity<Paciente> get(@PathVariable String id) {
         return ResponseEntity.ok(service.findById(id)
                 .orElseThrow(() -> new RuntimeException("Paciente no encontrado")));
     }
 
     @PostMapping
     public ResponseEntity<Paciente> create(@RequestBody Paciente p) {
-        System.out.println("Recibiendo paciente: " + p);
         Paciente nuevo = service.create(p);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Paciente> update(@PathVariable Long id, @RequestBody Paciente p) {
+    public ResponseEntity<Paciente> update(@PathVariable String id, @RequestBody Paciente p) {
         return ResponseEntity.ok(service.update(id, p));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable String id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/buscar/{termino}")
+    public ResponseEntity<List<Paciente>> buscar(@PathVariable String termino) {
+        return ResponseEntity.ok(service.buscar(termino));
+    }
+
+    @GetMapping("/estado/{estado}")
+    public ResponseEntity<List<Paciente>> porEstado(@PathVariable String estado) {
+        return ResponseEntity.ok(service.findByEstado(estado));
     }
 }

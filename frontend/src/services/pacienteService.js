@@ -13,7 +13,6 @@ export const pacienteService = {
 
   create: async (paciente) => {
     console.log('Datos a enviar:', paciente);
-    console.log('Datos como JSON:', JSON.stringify(paciente));
     const response = await api.post('/pacientes', paciente);
     return response.data;
   },
@@ -25,6 +24,16 @@ export const pacienteService = {
 
   delete: async (id) => {
     const response = await api.delete(`/pacientes/${id}`);
+    return response.data;
+  },
+
+  buscar: async (termino) => {
+    const response = await api.get(`/pacientes/buscar/${termino}`);
+    return response.data;
+  },
+
+  getByEstado: async (estado) => {
+    const response = await api.get(`/pacientes/estado/${estado}`);
     return response.data;
   }
 };

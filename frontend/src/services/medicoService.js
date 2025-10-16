@@ -26,9 +26,33 @@ export const medicoService = {
     return response.data;
   },
 
-  // Obtener especialidades
   getEspecialidades: async () => {
     const response = await api.get('/especialidades');
+    return response.data;
+  },
+
+  buscar: async (termino) => {
+    const response = await api.get(`/medicos/buscar/${termino}`);
+    return response.data;
+  },
+
+  getByEstado: async (estado) => {
+    const response = await api.get(`/medicos/estado/${estado}`);
+    return response.data;
+  },
+
+  agregarEspecialidad: async (idMedico, idEspecialidad) => {
+    const response = await api.post(`/medicos/${idMedico}/especialidades/${idEspecialidad}`);
+    return response.data;
+  },
+
+  eliminarEspecialidad: async (idMedico, idEspecialidad) => {
+    const response = await api.delete(`/medicos/${idMedico}/especialidades/${idEspecialidad}`);
+    return response.data;
+  },
+
+  getByEspecialidad: async (idEspecialidad) => {
+    const response = await api.get(`/medicos/especialidad/${idEspecialidad}`);
     return response.data;
   }
 };

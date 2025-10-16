@@ -1,50 +1,64 @@
 package com.tecsup.examen2.Pacientes.service;
 
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
 import com.tecsup.examen2.Pacientes.repository.HistoriaClinicaRepository;
-import com.tecsup.examen2.Pacientes.repository.PacienteRepository;
 import com.tecsup.examen2.Pacientes.model.HistoriaClinica;
-import com.tecsup.examen2.Pacientes.model.Paciente;
-import java.util.Optional;
+import com.tecsup.examen2.Pacientes.model.AntecedenteMedico;
+import java.util.*;
 
 @Service
-@Transactional
 public class HistoriaClinicaService {
 
-    private final HistoriaClinicaRepository repo;
-    private final PacienteRepository pacienteRepo;
+    private final HistoriaClinicaRepository historiaRepo;
 
-    public HistoriaClinicaService(HistoriaClinicaRepository repo,
-                                  PacienteRepository pacienteRepo) {
-        this.repo = repo;
-        this.pacienteRepo = pacienteRepo;
+    public HistoriaClinicaService(HistoriaClinicaRepository historiaRepo) {
+        this.historiaRepo = historiaRepo;
     }
 
-    public Optional<HistoriaClinica> findById(Long id) {
-        return repo.findById(id);
+    public List<HistoriaClinica> findAll() {
+        return historiaRepo.findAll();
     }
 
-    public HistoriaClinica save(HistoriaClinica historia) {
-        if (historia.getPaciente() != null && historia.getPaciente().getIdPaciente() != null) {
-            Long idPaciente = historia.getPaciente().getIdPaciente();
-            Paciente paciente = pacienteRepo.findById(idPaciente)
-                    .orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
-
-            paciente.setHistoriaClinica(historia);
-            historia.setPaciente(paciente);
-        } else {
-            throw new RuntimeException("Se requiere un paciente válido para crear la historia clínica");
-        }
-
-        if (historia.getAntecedentes() != null) {
-            historia.getAntecedentes().forEach(a -> a.setHistoriaClinica(historia));
-        }
-
-        return repo.save(historia);
+    public Optional<HistoriaClinica> findById(String id) {
+        return historiaRepo.findById(id);
     }
 
-    public void delete(Long id) {
-        repo.deleteById(id);
+    public Optional<HistoriaClinica> findByPacienteId(String idPaciente) {
+        return historiaRepo.findByPacienteIdPaciente(idPaciente);
+    }
+
+    public HistoriaClinica update(String id, HistoriaClinica updated) {
+        return historiaRepo.findById(id).map(existing -> {
+            existing.setObservaciones(updated.getObservaciones());
+            return historiaRepo.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Historia clínica no encontrada"));
+    }
+
+    public HistoriaClinica agregarAntecedente(String idHistoria, AntecedenteMedico antecedente) {
+        return historiaRepo.findById(idHistoria).map(historia -> {
+            if (historia.getAntecedentes() == null) {
+                historia.setAntecedentes(new ArrayList<>());
+            }
+            historia.getAntecedentes().add(antecedente);
+            return historiaRepo.save(historia);
+        }).orElseThrow(() -> new RuntimeException("Historia clínica no encontrada"));
+    }
+
+    public HistoriaClinica eliminarAntecedente(String idHistoria, int indiceAntecedente) {
+        return historiaRepo.findById(idHistoria).map(historia -> {
+            if (historia.getAntecedentes() != null &&
+                    indiceAntecedente >= 0 &&
+                    indiceAntecedente < historia.getAntecedentes().size()) {
+                historia.getAntecedentes().remove(indiceAntecedente);
+                return historiaRepo.save(historia);
+            }
+            throw new RuntimeException("Índice de antecedente inválido");
+        }).orElseThrow(() -> new RuntimeException("Historia clínica no encontrada"));
+    }
+
+    public List<AntecedenteMedico> getAntecedentes(String idHistoria) {
+        return historiaRepo.findById(idHistoria)
+                .map(HistoriaClinica::getAntecedentes)
+                .orElse(new ArrayList<>());
     }
 }

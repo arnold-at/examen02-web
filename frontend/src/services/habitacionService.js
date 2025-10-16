@@ -24,5 +24,20 @@ export const habitacionService = {
   delete: async (id) => {
     const response = await api.delete(`/habitaciones/${id}`);
     return response.data;
+  },
+
+  getByEstado: async (estado) => {
+    const response = await api.get(`/habitaciones/estado/${estado}`);
+    return response.data;
+  },
+
+  getByTipo: async (tipo) => {
+    const response = await api.get(`/habitaciones/tipo/${tipo}`);
+    return response.data;
+  },
+
+  getDisponiblesByTipo: async (tipo) => {
+    const response = await api.get(`/habitaciones/disponibles/tipo/${tipo}`);
+    return response.data;
   }
 };

@@ -2,22 +2,19 @@ package com.tecsup.examen2.Medicos.model;
 
 import com.fasterxml.jackson.annotation.*;
 import lombok.*;
-import jakarta.persistence.*;
-import java.util.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
 
-@Entity
-@Table(name = "especialidad")
+@Document(collection = "especialidades")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Especialidad {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idEspecialidad;
+    private String idEspecialidad;
 
+    @Indexed(unique = true)
     private String nombre;
+
     private String descripcion;
-
-    @OneToMany(mappedBy = "especialidad", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore
-    private List<MedicoEspecialidad> medicos = new ArrayList<>();
 }
-

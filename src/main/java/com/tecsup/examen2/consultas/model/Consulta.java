@@ -1,7 +1,10 @@
 package com.tecsup.examen2.consultas.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import com.fasterxml.jackson.annotation.*;
 import com.tecsup.examen2.Pacientes.model.Paciente;
 import com.tecsup.examen2.Medicos.model.Medico;
@@ -9,41 +12,34 @@ import com.tecsup.examen2.citas.model.Cita;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.ArrayList;
 
-@Entity
-@Table(name = "consulta")
+@Document(collection = "consultas")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Consulta {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idConsulta;
+    private String idConsulta;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_cita")
-    @JsonIgnoreProperties({"consultas", "paciente", "medico", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"consultas", "paciente", "medico"})
     private Cita cita;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_medico", nullable = false)
-    @JsonIgnoreProperties({"citas", "consultas", "especialidades", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"citas", "consultas", "especialidades"})
     private Medico medico;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_paciente", nullable = false)
-    @JsonIgnoreProperties({"citas", "consultas", "hospitalizaciones", "historiaClinica", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"citas", "consultas", "hospitalizaciones", "historiaClinica"})
     private Paciente paciente;
 
+    @Indexed
     private LocalDate fecha;
+
     private LocalTime hora;
     private String motivoConsulta;
     private String observaciones;
 
-    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<Diagnostico> diagnosticos;
-
-    @OneToMany(mappedBy = "consulta", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<RecetaMedica> recetas;
+    @Builder.Default
+    private List<Diagnostico> diagnosticos = new ArrayList<>();
 }

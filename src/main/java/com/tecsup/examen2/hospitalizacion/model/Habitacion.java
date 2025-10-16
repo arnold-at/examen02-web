@@ -1,24 +1,23 @@
 package com.tecsup.examen2.hospitalizacion.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
 import com.fasterxml.jackson.annotation.*;
-import com.tecsup.examen2.hospitalizacion.model.Hospitalizacion;
-import java.util.List;
 
-@Entity
-@Table(name = "habitacion")
+@Document(collection = "habitaciones")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Habitacion {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idHabitacion;
+    private String idHabitacion;
 
+    @Indexed(unique = true)
     private String numero;
-    private String tipo;
-    private String estado;
 
-    @OneToMany(mappedBy = "habitacion", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<Hospitalizacion> hospitalizaciones;
+    private String tipo;
+
+    @Indexed
+    private String estado;
 }

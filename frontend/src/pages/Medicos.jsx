@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, X, Award } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, X, Award, Loader2 } from 'lucide-react';
 import { medicoService } from '../services/medicoService';
 import { especialidadService } from '../services/especialidadService';
-import { medicoEspecialidadService } from '../services/medicoEspecialidadService';
 
 const Medicos = () => {
   const [medicos, setMedicos] = useState([]);
   const [especialidades, setEspecialidades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showEspecialidadModal, setShowEspecialidadModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +19,7 @@ const Medicos = () => {
     colegiatura: '',
     telefono: '',
     correo: '',
-    estado: 'activo'
+    estado: 'ACTIVO'
   });
 
   useEffect(() => {
@@ -50,6 +50,8 @@ const Medicos = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    
     try {
       if (selectedMedico) {
         await medicoService.update(selectedMedico.idMedico, formData);
@@ -64,6 +66,8 @@ const Medicos = () => {
     } catch (error) {
       console.error('Error al guardar médico:', error);
       alert('Error al guardar el médico');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -104,8 +108,10 @@ const Medicos = () => {
       alert('Seleccione una especialidad');
       return;
     }
+    
     try {
-      await medicoEspecialidadService.asignar(selectedMedico.idMedico, parseInt(selectedEspecialidad));
+      // ⭐ CAMBIO: Usar el nuevo método del service
+      await medicoService.agregarEspecialidad(selectedMedico.idMedico, selectedEspecialidad);
       alert('Especialidad asignada exitosamente');
       setShowEspecialidadModal(false);
       loadData();
@@ -115,10 +121,11 @@ const Medicos = () => {
     }
   };
 
-  const handleRemoverEspecialidad = async (idMedicoEsp) => {
+  const handleRemoverEspecialidad = async (idMedico, idEspecialidad) => {
     if (window.confirm('¿Remover esta especialidad del médico?')) {
       try {
-        await medicoEspecialidadService.eliminar(idMedicoEsp);
+        // ⭐ CAMBIO: Usar el nuevo método del service
+        await medicoService.eliminarEspecialidad(idMedico, idEspecialidad);
         alert('Especialidad removida exitosamente');
         loadData();
       } catch (error) {
@@ -135,7 +142,7 @@ const Medicos = () => {
       colegiatura: '',
       telefono: '',
       correo: '',
-      estado: 'activo'
+      estado: 'ACTIVO'
     });
     setSelectedMedico(null);
   };
@@ -149,7 +156,10 @@ const Medicos = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-xl text-gray-600">Cargando médicos...</div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          <div className="text-xl text-gray-600">Cargando médicos...</div>
+        </div>
       </div>
     );
   }
@@ -202,14 +212,14 @@ const Medicos = () => {
                   <td className="py-3 px-4">{medico.colegiatura}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-1">
-                      {medico.especialidades?.map((me) => (
+                      {medico.especialidades?.map((me, index) => (
                         <span
-                          key={me.idMedicoEsp}
+                          key={index}
                           className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
                         >
                           {me.especialidad?.nombre}
                           <button
-                            onClick={() => handleRemoverEspecialidad(me.idMedicoEsp)}
+                            onClick={() => handleRemoverEspecialidad(medico.idMedico, me.especialidad?.idEspecialidad)}
                             className="hover:text-red-600"
                           >
                             <X size={12} />
@@ -221,7 +231,7 @@ const Medicos = () => {
                   <td className="py-3 px-4">{medico.telefono}</td>
                   <td className="py-3 px-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      medico.estado === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      medico.estado === 'ACTIVO' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                     }`}>
                       {medico.estado}
                     </span>
@@ -256,6 +266,7 @@ const Medicos = () => {
         </div>
       </div>
 
+      {/* MODAL MÉDICO */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 w-full max-w-2xl">
@@ -263,11 +274,16 @@ const Medicos = () => {
               <h2 className="text-2xl font-bold text-gray-800">
                 {selectedMedico ? 'Editar Médico' : 'Registrar Nuevo Médico'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button 
+                onClick={() => setShowModal(false)} 
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                disabled={saving}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nombres *</label>
@@ -278,6 +294,7 @@ const Medicos = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   />
                 </div>
                 <div>
@@ -289,6 +306,7 @@ const Medicos = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   />
                 </div>
                 <div>
@@ -300,6 +318,7 @@ const Medicos = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   />
                 </div>
                 <div>
@@ -310,6 +329,7 @@ const Medicos = () => {
                     value={formData.telefono}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                    disabled={saving}
                   />
                 </div>
                 <div className="col-span-2">
@@ -320,29 +340,33 @@ const Medicos = () => {
                     value={formData.correo}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                    disabled={saving}
                   />
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
                 <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium"
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {selectedMedico ? 'Actualizar' : 'Registrar'} Médico
+                  {saving && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {saving ? 'Guardando...' : (selectedMedico ? 'Actualizar' : 'Registrar')}
                 </button>
                 <button
-                  type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  disabled={saving}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
+      {/* MODAL ESPECIALIDAD */}
       {showEspecialidadModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 w-full max-w-md">

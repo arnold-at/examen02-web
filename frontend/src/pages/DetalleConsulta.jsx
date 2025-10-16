@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, AlertCircle, Pill, FileText } from 'lucide-react';
-import { diagnosticoService } from '../services/diagnosticoService';
-import { recetaMedicaService } from '../services/recetaMedicaService';
+import { X, Plus, Trash2, AlertCircle, Pill, FileText, Loader2 } from 'lucide-react';
 import { consultaService } from '../services/consultaService';
+import { recetaMedicaService } from '../services/recetaMedicaService';
 
 const DetalleConsulta = ({ consulta, onClose }) => {
   const [diagnosticos, setDiagnosticos] = useState([]);
-  const [recetas, setRecetas] = useState([]);
+  const [receta, setReceta] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [saving, setSaving] = useState(false);
   const [showDiagnosticoModal, setShowDiagnosticoModal] = useState(false);
   const [showRecetaModal, setShowRecetaModal] = useState(false);
   const [formDiagnostico, setFormDiagnostico] = useState({
@@ -22,24 +21,22 @@ const DetalleConsulta = ({ consulta, onClose }) => {
 
   useEffect(() => {
     loadData();
-  }, [consulta, refreshKey]);
+  }, [consulta]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      const [diagnosticosData, consultaActualizada] = await Promise.all([
-        diagnosticoService.getByConsulta(consulta.idConsulta),
-        consultaService.getById(consulta.idConsulta)
-      ]);
+      // ⭐ CAMBIO: Obtener diagnósticos desde la consulta (están embebidos)
+      const consultaData = await consultaService.getById(consulta.idConsulta);
+      setDiagnosticos(consultaData.diagnosticos || []);
       
-      console.log('📊 Diagnósticos cargados:', diagnosticosData);
-      setDiagnosticos([...diagnosticosData]);
-      
-      if (consultaActualizada.recetas && consultaActualizada.recetas.length > 0) {
-        setRecetas([...consultaActualizada.recetas]);
-      } else {
-        setRecetas([]);
+      // Obtener receta si existe
+      try {
+        const recetaData = await recetaMedicaService.getByConsulta(consulta.idConsulta);
+        setReceta(recetaData);
+      } catch (error) {
+        setReceta(null);
       }
     } catch (error) {
       console.error('Error al cargar datos:', error);
@@ -55,34 +52,35 @@ const DetalleConsulta = ({ consulta, onClose }) => {
 
   const handleSubmitDiagnostico = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    
     try {
       const diagnostico = {
-        consulta: { idConsulta: consulta.idConsulta },
         tipo: formDiagnostico.tipo,
         descripcion: formDiagnostico.descripcion
       };
       
-      console.log('📝 Creando diagnóstico:', diagnostico);
-      const resultado = await diagnosticoService.create(diagnostico);
-      console.log('✅ Diagnóstico creado:', resultado);
+      // ⭐ CAMBIO: Usar consultaService para agregar diagnóstico
+      await consultaService.agregarDiagnostico(consulta.idConsulta, diagnostico);
       
       setShowDiagnosticoModal(false);
       resetFormDiagnostico();
-      
-      setRefreshKey(prev => prev + 1);
-      
+      loadData();
       alert('Diagnóstico registrado exitosamente');
     } catch (error) {
       console.error('Error al guardar diagnóstico:', error);
       alert('Error al guardar el diagnóstico');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDeleteDiagnostico = async (id) => {
+  const handleDeleteDiagnostico = async (indice) => {
     if (window.confirm('¿Eliminar este diagnóstico?')) {
       try {
-        await diagnosticoService.delete(id);
-        setRefreshKey(prev => prev + 1);
+        // ⚠️ CAMBIO: Eliminar por índice, no por ID
+        await consultaService.eliminarDiagnostico(consulta.idConsulta, indice);
+        loadData();
         alert('Diagnóstico eliminado');
       } catch (error) {
         console.error('Error al eliminar:', error);
@@ -118,20 +116,25 @@ const DetalleConsulta = ({ consulta, onClose }) => {
 
   const handleSubmitReceta = async (e) => {
     e.preventDefault();
+    setSaving(true);
+    
     try {
-      const receta = {
-        consulta: { idConsulta: consulta.idConsulta },
+      const recetaData = {
+        idConsulta: consulta.idConsulta,
         indicaciones: formReceta.indicaciones,
         detalles: formReceta.detalles
       };
-      await recetaMedicaService.create(receta);
+      
+      await recetaMedicaService.create(recetaData);
       setShowRecetaModal(false);
       resetFormReceta();
-      setRefreshKey(prev => prev + 1);
+      loadData();
       alert('Receta médica registrada exitosamente');
     } catch (error) {
       console.error('Error al guardar receta:', error);
       alert('Error al guardar la receta');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -155,7 +158,8 @@ const DetalleConsulta = ({ consulta, onClose }) => {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8">
+        <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
           <div className="text-xl text-gray-600">Cargando detalles...</div>
         </div>
       </div>
@@ -186,6 +190,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
             )}
           </div>
 
+          {/* DIAGNÓSTICOS */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
@@ -208,8 +213,8 @@ const DetalleConsulta = ({ consulta, onClose }) => {
               </div>
             ) : (
               <div className="space-y-3">
-                {diagnosticos.map((diagnostico) => (
-                  <div key={diagnostico.idDiagnostico} className="bg-white border-2 rounded-lg p-4 hover:shadow-md transition-shadow">
+                {diagnosticos.map((diagnostico, index) => (
+                  <div key={index} className="bg-white border-2 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border mb-2 ${getTipoColor(diagnostico.tipo)}`}>
@@ -218,7 +223,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                         <p className="text-gray-700 mt-2">{diagnostico.descripcion}</p>
                       </div>
                       <button
-                        onClick={() => handleDeleteDiagnostico(diagnostico.idDiagnostico)}
+                        onClick={() => handleDeleteDiagnostico(index)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 size={18} />
@@ -230,57 +235,61 @@ const DetalleConsulta = ({ consulta, onClose }) => {
             )}
           </div>
 
+          {/* RECETA MÉDICA */}
           <div>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <Pill size={24} className="text-green-600" />
-                Recetas Médicas ({recetas.length})
+                Receta Médica
               </h3>
-              <button
-                onClick={() => setShowRecetaModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all"
-              >
-                <Plus size={20} />
-                Agregar Receta
-              </button>
+              {!receta && (
+                <button
+                  onClick={() => setShowRecetaModal(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all"
+                >
+                  <Plus size={20} />
+                  Agregar Receta
+                </button>
+              )}
             </div>
 
-            {recetas.length === 0 ? (
+            {!receta ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <Pill className="mx-auto text-gray-400 mb-2" size={48} />
-                <p className="text-gray-500">No hay recetas médicas registradas</p>
+                <p className="text-gray-500">No hay receta médica registrada</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {recetas.map((receta) => (
-                  <div key={receta.idReceta} className="bg-white border-2 rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">Indicaciones: {receta.indicaciones}</p>
-                    <div className="space-y-2">
-                      {receta.detalles?.map((detalle) => (
-                        <div key={detalle.idDetalleReceta} className="bg-green-50 rounded p-3">
-                          <p className="font-semibold text-green-800">{detalle.medicamento}</p>
-                          <p className="text-sm text-gray-600">Dosis: {detalle.dosis} | Frecuencia: {detalle.frecuencia} | Duración: {detalle.duracion}</p>
-                        </div>
-                      ))}
+              <div className="bg-white border-2 rounded-lg p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-3">Indicaciones: {receta.indicaciones}</p>
+                <div className="space-y-2">
+                  {receta.detalles?.map((detalle, index) => (
+                    <div key={index} className="bg-green-50 rounded p-3">
+                      <p className="font-semibold text-green-800">{detalle.medicamento}</p>
+                      <p className="text-sm text-gray-600">Dosis: {detalle.dosis} | Frecuencia: {detalle.frecuencia} | Duración: {detalle.duracion}</p>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
 
+        {/* MODAL DIAGNÓSTICO */}
         {showDiagnosticoModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-8 w-full max-w-md">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">Nuevo Diagnóstico</h3>
-                <button onClick={() => setShowDiagnosticoModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <button 
+                  onClick={() => setShowDiagnosticoModal(false)} 
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  disabled={saving}
+                >
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmitDiagnostico} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
                   <select
@@ -289,6 +298,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                     onChange={handleDiagnosticoChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
                     required
+                    disabled={saving}
                   >
                     <option value="presuntivo">Presuntivo</option>
                     <option value="definitivo">Definitivo</option>
@@ -304,40 +314,48 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                     rows="4"
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
                     required
+                    disabled={saving}
                   ></textarea>
                 </div>
 
                 <div className="flex gap-4 pt-4">
                   <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium"
+                    onClick={handleSubmitDiagnostico}
+                    disabled={saving}
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Registrar
+                    {saving && <Loader2 className="w-5 h-5 animate-spin" />}
+                    {saving ? 'Guardando...' : 'Registrar'}
                   </button>
                   <button
-                    type="button"
                     onClick={() => setShowDiagnosticoModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    disabled={saving}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}
 
+        {/* MODAL RECETA */}
         {showRecetaModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-2xl font-bold text-gray-800">Nueva Receta Médica</h3>
-                <button onClick={() => setShowRecetaModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <button 
+                  onClick={() => setShowRecetaModal(false)} 
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  disabled={saving}
+                >
                   <X size={20} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmitReceta} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Indicaciones Generales *</label>
                   <textarea
@@ -347,6 +365,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                     rows="3"
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   ></textarea>
                 </div>
 
@@ -357,6 +376,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                       type="button"
                       onClick={addDetalle}
                       className="flex items-center gap-1 text-green-600 hover:text-green-700 text-sm font-medium"
+                      disabled={saving}
                     >
                       <Plus size={16} />
                       Agregar Medicamento
@@ -371,6 +391,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                             type="button"
                             onClick={() => removeDetalle(index)}
                             className="absolute top-2 right-2 p-1 text-red-600 hover:bg-red-100 rounded"
+                            disabled={saving}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -385,6 +406,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                               onChange={(e) => handleDetalleChange(index, 'medicamento', e.target.value)}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                               required
+                              disabled={saving}
                             />
                           </div>
                           <div>
@@ -396,6 +418,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                               placeholder="Ej: 500mg"
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                               required
+                              disabled={saving}
                             />
                           </div>
                           <div>
@@ -407,6 +430,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                               placeholder="Ej: Cada 8 horas"
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                               required
+                              disabled={saving}
                             />
                           </div>
                           <div className="col-span-2">
@@ -418,6 +442,7 @@ const DetalleConsulta = ({ consulta, onClose }) => {
                               placeholder="Ej: 7 días"
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-sm"
                               required
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -428,20 +453,22 @@ const DetalleConsulta = ({ consulta, onClose }) => {
 
                 <div className="flex gap-4 pt-4">
                   <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium"
+                    onClick={handleSubmitReceta}
+                    disabled={saving}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Registrar Receta
+                    {saving && <Loader2 className="w-5 h-5 animate-spin" />}
+                    {saving ? 'Guardando...' : 'Registrar Receta'}
                   </button>
                   <button
-                    type="button"
                     onClick={() => setShowRecetaModal(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    disabled={saving}
+                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Cancelar
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}

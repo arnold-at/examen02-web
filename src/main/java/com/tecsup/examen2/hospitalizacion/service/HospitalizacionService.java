@@ -1,73 +1,117 @@
 package com.tecsup.examen2.hospitalizacion.service;
 
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
 import com.tecsup.examen2.hospitalizacion.repository.HospitalizacionRepository;
 import com.tecsup.examen2.hospitalizacion.repository.HabitacionRepository;
 import com.tecsup.examen2.hospitalizacion.model.Hospitalizacion;
 import com.tecsup.examen2.hospitalizacion.model.Habitacion;
-import com.tecsup.examen2.Pacientes.repository.PacienteRepository;
-import com.tecsup.examen2.Pacientes.model.Paciente;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
 
 @Service
-@Transactional
 public class HospitalizacionService {
-    private final HospitalizacionRepository repo;
-    private final HabitacionRepository habitRepo;
-    private final PacienteRepository pacienteRepo;
 
-    public HospitalizacionService(HospitalizacionRepository repo,
-                                  HabitacionRepository habitRepo,
-                                  PacienteRepository pacienteRepo) {
-        this.repo = repo;
-        this.habitRepo = habitRepo;
-        this.pacienteRepo = pacienteRepo;
+    private final HospitalizacionRepository hospitalizacionRepo;
+    private final HabitacionRepository habitacionRepo;
+
+    public HospitalizacionService(HospitalizacionRepository hospitalizacionRepo,
+                                  HabitacionRepository habitacionRepo) {
+        this.hospitalizacionRepo = hospitalizacionRepo;
+        this.habitacionRepo = habitacionRepo;
     }
 
     public List<Hospitalizacion> findAll() {
-        return repo.findAll();
+        return hospitalizacionRepo.findAll();
     }
 
-    public Hospitalizacion internar(Long idPaciente, Long idHabitacion, String diagnostico) {
-        Paciente paciente = pacienteRepo.findById(idPaciente)
-                .orElseThrow(() -> new RuntimeException("Paciente no encontrado"));
+    public Optional<Hospitalizacion> findById(String id) {
+        return hospitalizacionRepo.findById(id);
+    }
 
-        Habitacion habitacion = habitRepo.findById(idHabitacion)
-                .orElseThrow(() -> new RuntimeException("Habitación no encontrada"));
-
-        if (!"disponible".equalsIgnoreCase(habitacion.getEstado())) {
-            throw new RuntimeException("Habitación no disponible");
+    public Hospitalizacion create(Hospitalizacion hospitalizacion) {
+        if (hospitalizacion.getEstado() == null || hospitalizacion.getEstado().isEmpty()) {
+            hospitalizacion.setEstado("EN_CURSO");
         }
 
-        habitacion.setEstado("ocupada");
-        habitRepo.save(habitacion);
+        if (hospitalizacion.getHabitacion() != null) {
+            habitacionRepo.findById(hospitalizacion.getHabitacion().getIdHabitacion())
+                    .ifPresent(habitacion -> {
+                        habitacion.setEstado("OCUPADA");
+                        habitacionRepo.save(habitacion);
+                    });
+        }
 
-        Hospitalizacion h = new Hospitalizacion();
-        h.setPaciente(paciente);
-        h.setHabitacion(habitacion);
-        h.setFechaIngreso(LocalDate.now());
-        h.setDiagnosticoIngreso(diagnostico);
-        h.setEstado("activo");
-
-        return repo.save(h);
+        return hospitalizacionRepo.save(hospitalizacion);
     }
 
-    public Hospitalizacion alta(Long idHosp) {
-        Hospitalizacion h = repo.findById(idHosp)
+    public Hospitalizacion update(String id, Hospitalizacion updated) {
+        return hospitalizacionRepo.findById(id).map(existing -> {
+            existing.setFechaAlta(updated.getFechaAlta());
+            existing.setDiagnosticoIngreso(updated.getDiagnosticoIngreso());
+            existing.setEstado(updated.getEstado());
+
+            if ("FINALIZADA".equals(updated.getEstado()) && existing.getHabitacion() != null) {
+                habitacionRepo.findById(existing.getHabitacion().getIdHabitacion())
+                        .ifPresent(habitacion -> {
+                            habitacion.setEstado("DISPONIBLE");
+                            habitacionRepo.save(habitacion);
+                        });
+            }
+
+            return hospitalizacionRepo.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Hospitalización no encontrada"));
+    }
+
+    public void delete(String id) {
+        Hospitalizacion hosp = hospitalizacionRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Hospitalización no encontrada"));
-        h.setFechaAlta(LocalDate.now());
-        h.setEstado("dado de alta");
 
-        Habitacion habitacion = h.getHabitacion();
-        habitacion.setEstado("disponible");
-        habitRepo.save(habitacion);
+        if (hosp.getHabitacion() != null) {
+            habitacionRepo.findById(hosp.getHabitacion().getIdHabitacion())
+                    .ifPresent(habitacion -> {
+                        habitacion.setEstado("DISPONIBLE");
+                        habitacionRepo.save(habitacion);
+                    });
+        }
 
-        return repo.save(h);
+        hospitalizacionRepo.deleteById(id);
     }
 
-    public void delete(Long id) {
-        repo.deleteById(id);
+
+    public List<Hospitalizacion> findByPaciente(String idPaciente) {
+        return hospitalizacionRepo.findByPacienteIdPaciente(idPaciente);
+    }
+
+    public List<Hospitalizacion> findByEstado(String estado) {
+        return hospitalizacionRepo.findByEstado(estado);
+    }
+
+    public Optional<Hospitalizacion> findHospitalizacionActivaByPaciente(String idPaciente) {
+        return hospitalizacionRepo.findHospitalizacionActivaByPaciente(idPaciente);
+    }
+
+    public List<Hospitalizacion> findByHabitacion(String idHabitacion) {
+        return hospitalizacionRepo.findByHabitacionIdHabitacion(idHabitacion);
+    }
+
+    public List<Hospitalizacion> findByFechaIngresoBetween(LocalDate inicio, LocalDate fin) {
+        return hospitalizacionRepo.findByFechaIngresoBetween(inicio, fin);
+    }
+
+    public Hospitalizacion darDeAlta(String id, LocalDate fechaAlta) {
+        return hospitalizacionRepo.findById(id).map(hosp -> {
+            hosp.setFechaAlta(fechaAlta);
+            hosp.setEstado("FINALIZADA");
+
+            if (hosp.getHabitacion() != null) {
+                habitacionRepo.findById(hosp.getHabitacion().getIdHabitacion())
+                        .ifPresent(habitacion -> {
+                            habitacion.setEstado("DISPONIBLE");
+                            habitacionRepo.save(habitacion);
+                        });
+            }
+
+            return hospitalizacionRepo.save(hosp);
+        }).orElseThrow(() -> new RuntimeException("Hospitalización no encontrada"));
     }
 }

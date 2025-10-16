@@ -16,8 +16,18 @@ export const especialidadService = {
     return response.data;
   },
 
+  update: async (id, especialidad) => {
+    const response = await api.put(`/especialidades/${id}`, especialidad);
+    return response.data;
+  },
+
   delete: async (id) => {
     const response = await api.delete(`/especialidades/${id}`);
+    return response.data;
+  },
+
+  buscar: async (termino) => {
+    const response = await api.get(`/especialidades/buscar/${termino}`);
     return response.data;
   }
 };

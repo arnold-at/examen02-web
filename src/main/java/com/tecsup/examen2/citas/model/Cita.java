@@ -1,40 +1,37 @@
 package com.tecsup.examen2.citas.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import com.fasterxml.jackson.annotation.*;
 import com.tecsup.examen2.Pacientes.model.Paciente;
 import com.tecsup.examen2.Medicos.model.Medico;
-import com.tecsup.examen2.consultas.model.Consulta;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
-@Entity
-@Table(name = "cita")
+@Document(collection = "citas")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Cita {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idCita;
+    private String idCita;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_paciente", nullable = false)
-    @JsonIgnoreProperties({"citas", "historiaClinica", "consultas", "hospitalizaciones", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"citas", "historiaClinica", "consultas", "hospitalizaciones"})
     private Paciente paciente;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_medico", nullable = false)
-    @JsonIgnoreProperties({"citas", "especialidades", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"citas", "especialidades"})
     private Medico medico;
 
+    @Indexed
     private LocalDate fecha;
+
     private LocalTime hora;
     private String motivo;
-    private String estado;
 
-    @OneToMany(mappedBy = "cita", fetch = FetchType.LAZY)
-    @JsonIgnore
-    private List<Consulta> consultas;
+    @Indexed
+    private String estado;
 }

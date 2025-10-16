@@ -1,32 +1,44 @@
 package com.tecsup.examen2.Medicos.service;
 
-import com.tecsup.examen2.Medicos.model.Especialidad;
-import com.tecsup.examen2.Medicos.repository.EspecialidadRepository;
 import org.springframework.stereotype.Service;
-import java.util.List;
+import com.tecsup.examen2.Medicos.repository.EspecialidadRepository;
+import com.tecsup.examen2.Medicos.model.Especialidad;
+import java.util.*;
 
 @Service
 public class EspecialidadService {
 
-    private final EspecialidadRepository especialidadRepository;
+    private final EspecialidadRepository especialidadRepo;
 
-    public EspecialidadService(EspecialidadRepository especialidadRepository) {
-        this.especialidadRepository = especialidadRepository;
+    public EspecialidadService(EspecialidadRepository especialidadRepo) {
+        this.especialidadRepo = especialidadRepo;
     }
 
-    public List<Especialidad> listarTodas() {
-        return especialidadRepository.findAll();
+    public List<Especialidad> findAll() {
+        return especialidadRepo.findAll();
     }
 
-    public Especialidad guardar(Especialidad especialidad) {
-        return especialidadRepository.save(especialidad);
+    public Optional<Especialidad> findById(String id) {
+        return especialidadRepo.findById(id);
     }
 
-    public Especialidad obtenerPorId(Long id) {
-        return especialidadRepository.findById(id).orElse(null);
+    public Especialidad create(Especialidad especialidad) {
+        return especialidadRepo.save(especialidad);
     }
 
-    public void eliminar(Long id) {
-        especialidadRepository.deleteById(id);
+    public Especialidad update(String id, Especialidad updated) {
+        return especialidadRepo.findById(id).map(existing -> {
+            existing.setNombre(updated.getNombre());
+            existing.setDescripcion(updated.getDescripcion());
+            return especialidadRepo.save(existing);
+        }).orElseThrow(() -> new RuntimeException("Especialidad no encontrada"));
+    }
+
+    public void delete(String id) {
+        especialidadRepo.deleteById(id);
+    }
+
+    public List<Especialidad> buscar(String termino) {
+        return especialidadRepo.findByNombreContainingIgnoreCase(termino);
     }
 }

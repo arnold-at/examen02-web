@@ -1,32 +1,35 @@
 package com.tecsup.examen2.hospitalizacion.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import com.fasterxml.jackson.annotation.*;
 import com.tecsup.examen2.Pacientes.model.Paciente;
 import java.time.LocalDate;
 
-@Entity
-@Table(name = "hospitalizacion")
+@Document(collection = "hospitalizaciones")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Hospitalizacion {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idHosp;
+    private String idHosp;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_paciente", nullable = false)
-    @JsonIgnoreProperties({"citas", "consultas", "hospitalizaciones", "historiaClinica", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"citas", "consultas", "hospitalizaciones", "historiaClinica"})
     private Paciente paciente;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "id_habitacion", nullable = false)
-    @JsonIgnoreProperties({"hospitalizaciones", "hibernateLazyInitializer", "handler"})
+    @DBRef
+    @JsonIgnoreProperties({"hospitalizaciones"})
     private Habitacion habitacion;
 
+    @Indexed
     private LocalDate fechaIngreso;
+
     private LocalDate fechaAlta;
     private String diagnosticoIngreso;
+
+    @Indexed
     private String estado;
 }

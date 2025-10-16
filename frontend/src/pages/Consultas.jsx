@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, X, Eye } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, X, Eye, Loader2 } from 'lucide-react';
 import { consultaService } from '../services/consultaService';
 import { pacienteService } from '../services/pacienteService';
 import { medicoService } from '../services/medicoService';
@@ -12,6 +12,7 @@ const Consultas = () => {
   const [medicos, setMedicos] = useState([]);
   const [citas, setCitas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +60,8 @@ const Consultas = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
+
     try {
       if (selectedConsulta) {
         await consultaService.update(selectedConsulta.idConsulta, formData);
@@ -73,6 +76,8 @@ const Consultas = () => {
     } catch (error) {
       console.error('Error al guardar consulta:', error);
       alert('Error al guardar la consulta');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -121,11 +126,6 @@ const Consultas = () => {
     setSelectedConsulta(null);
   };
 
-  const openNewModal = () => {
-    resetForm();
-    setShowModal(true);
-  };
-
   const filteredConsultas = consultas.filter(consulta => {
     const searchLower = searchTerm.toLowerCase();
     const pacienteNombre = `${consulta.paciente?.nombres || ''} ${consulta.paciente?.apellidos || ''}`.toLowerCase();
@@ -141,7 +141,10 @@ const Consultas = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-xl text-gray-600">Cargando consultas...</div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          <div className="text-xl text-gray-600">Cargando consultas...</div>
+        </div>
       </div>
     );
   }
@@ -151,7 +154,7 @@ const Consultas = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Consultas</h1>
         <button
-          onClick={openNewModal}
+          onClick={() => { resetForm(); setShowModal(true); }}
           className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md"
         >
           <Plus className="w-5 h-5" />
@@ -234,12 +237,16 @@ const Consultas = () => {
               <h2 className="text-2xl font-bold text-gray-800">
                 {selectedConsulta ? 'Editar Consulta' : 'Registrar Nueva Consulta'}
               </h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button 
+                onClick={() => setShowModal(false)} 
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                disabled={saving}
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Paciente *</label>
@@ -249,6 +256,7 @@ const Consultas = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   >
                     <option value="">Seleccionar paciente</option>
                     {pacientes.map(p => (
@@ -266,6 +274,7 @@ const Consultas = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   >
                     <option value="">Seleccionar médico</option>
                     {medicos.map(m => (
@@ -282,6 +291,7 @@ const Consultas = () => {
                     value={formData.idCita}
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                    disabled={saving}
                   >
                     <option value="">Sin cita asociada</option>
                     {citas.map(c => (
@@ -300,6 +310,7 @@ const Consultas = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   />
                 </div>
                 <div>
@@ -311,6 +322,7 @@ const Consultas = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   />
                 </div>
                 <div className="col-span-2">
@@ -322,6 +334,7 @@ const Consultas = () => {
                     rows="3"
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
                     required
+                    disabled={saving}
                   ></textarea>
                 </div>
                 <div className="col-span-2">
@@ -332,25 +345,28 @@ const Consultas = () => {
                     onChange={handleInputChange}
                     rows="3"
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none"
+                    disabled={saving}
                   ></textarea>
                 </div>
               </div>
               <div className="flex gap-4 pt-4">
                 <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium"
+                  onClick={handleSubmit}
+                  disabled={saving}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {selectedConsulta ? 'Actualizar' : 'Registrar'} Consulta
+                  {saving && <Loader2 className="w-5 h-5 animate-spin" />}
+                  {saving ? 'Guardando...' : (selectedConsulta ? 'Actualizar' : 'Registrar')}
                 </button>
                 <button
-                  type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  disabled={saving}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

@@ -1,29 +1,29 @@
 package com.tecsup.examen2.Pacientes.model;
 
 import lombok.*;
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import com.fasterxml.jackson.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.ArrayList;
 
-@Entity
-@Table(name = "historia_clinica")
+@Document(collection = "historias_clinicas")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class HistoriaClinica {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idHistoria;
+    private String idHistoria;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_paciente", nullable = false)
-    @JsonBackReference("paciente-historia")  // ⭐ IMPORTANTE
+    @DBRef
+    @JsonBackReference("paciente-historia")
     private Paciente paciente;
 
     private LocalDate fechaApertura;
     private String observaciones;
 
-    @OneToMany(mappedBy = "historiaClinica", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference("historia-antecedentes")
-    private List<AntecedenteMedico> antecedentes;
+    @Builder.Default
+    private List<AntecedenteMedico> antecedentes = new ArrayList<>();
 }
+
